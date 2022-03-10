@@ -16,6 +16,10 @@
 #define WIDTH_MAX 1800
 #define HEIGHT_MIN 200
 #define HEIGHT_MAX 900
+#define BASIC_WIDTH 800
+#define BASIC_HEIGHT 800
+
+#define MAX_ZOOM 1.5
 
 #define NUM_OF_BUTTONS 5
 
@@ -28,18 +32,13 @@ public:
     ~MainWindow();
 
 public slots:
-    void changePalette();
-    void savePicture();
-    void setDimensions();
-    void handleResults();
-    void keyPressEvent(QKeyEvent *event);
+    void handleResults(); // when threads signal that they are done computing, handle the image
 
 signals:
-    void recalculateImage();
+    void recalculateImage(); // used to signal to calc. threads to recalculate the image
 
 private:
-    palettes p;
-    CalcThread * t;
+    /* GUI variables */
     QLabel * image;
     QGridLayout * layout;
     QPixmap currentPix;
@@ -50,19 +49,35 @@ private:
     QValidator * heightV;
     QPushButton * buttons[NUM_OF_BUTTONS];
 
-    int width, height;
-    float xOrigin, yOrigin;
+    /* Local calculation data */
+    uint32_t width, height;
+    float xOffset, yOffset;
+    float xStep, yStep;
+    float zoom;
+    palettes p;
 
-    compData * data;
+    /* Variables connected to threads */
+    CalcThread * t[NUM_OF_CALC_THREADS];
+    compData * data; // computation data
     QMutex * m;
+    uint16_t numOfThreadsFinished;
+    bool threadsReady;
 
+    /* Init functions */
     void initLayout();
+    void initVariables();
+    void initcompData();
     void initImage();
     void initEditFields();
     void initButtons();
     void startWorkInAThread();
 
+    /* Functions for interacting with GUI */
     void changeOrigin(int key);
-
+    void changeZoom(int key);
+    void changePalette();
+    void savePicture();
+    void setDimensions();
+    void keyPressEvent(QKeyEvent *event);
 };
 #endif // MAINWINDOW_H

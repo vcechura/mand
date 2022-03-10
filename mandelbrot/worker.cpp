@@ -1,55 +1,72 @@
 #include "worker.h"
 
-CalcThread::CalcThread(compData * dataStruct, QMutex * mutex){
+CalcThread::CalcThread(compData * dataStruct, QMutex * mutex, int thread){
     data = dataStruct;
     m = mutex;
+    threadID = thread;
     recalculate = false;
 }
 
 void CalcThread::run(){
+    /* While loop runs until threads are requested to close*/
     while(!QThread::currentThread()->isInterruptionRequested()){
 
         if(recalculate){
-            m->lock();
+            recalculate = 0;
+
+            m->lock(); // update calculation data
             width = data->width;
             height = data->height;
-            xOrigin = data->xOrigin;
-            yOrigin = data->yOrigin;
+            xOffset = data->xOffset;
+            yOffset = data->yOffset;
+            zoom = data->zoom;
             p = data->p;
             m->unlock();
-            float xScale;
-            float yScale;
+
+            /* Calculate the step and image origin based on width, zoom and origin offset */
+            float xScaled, yScaled;
+            float xOrigin, yOrigin;
+            float xStep, yStep;
             if(width > height){
                 float scale = width/height;
-                xScale = X_BASIC * scale;
-                yScale = Y_BASIC;
+                xScaled = (X_START+zoom) * scale;
+                yScaled = (Y_START+zoom);// * scale;
             }else{
                 float scale = height/width;
-                xScale = X_BASIC;
-                yScale = Y_BASIC * scale;
+                xScaled = (X_START+zoom);// * scale;
+                yScaled = (Y_START+zoom) * scale;
             }
-            recalculate = 0;
-            float xStep = 1.5*xScale/width;
-            float yStep = 2*yScale/height;
-            calculateFract(xStep, yStep, xOrigin, yOrigin);
-        }
+            xStep = 2*xScaled/width;
+            yStep = 2*yScaled/height;
+            xOrigin = -(width*xStep)*1/2 + xOffset;
+            yOrigin = (height*yStep)*1/2 + yOffset;
 
+            if(threadID == 0){ // only need to update this once
+                m->lock();
+                data->xStep = xStep;
+                data->yStep = yStep;
+                m->unlock();
+            }
+
+            calculateFract(xStep, yStep, xOrigin, yOrigin); // calculates the fractal values
+        }
     }
 }
 
-void CalcThread::calculateFract(float xStep,float yStep, float xStart, float yStart){
+/* Calculates how many iterations are needed to decide if the pixel belongs to mandel. and colors the pixels */
+void CalcThread::calculateFract(float xStep, float yStep, float xOrigin, float yOrigin){
 
     float zx, zy, cx, cy, tempx;
     int count;
-    QImage image = QImage(width, height, QImage::Format_RGB888);
-    for(int i = 0; i < width; i++){
+    int part = width/NUM_OF_CALC_THREADS;
+    for(int i = threadID*part; i < threadID*part + part; i++){ // divide the work among work threads
         for(int j = 0; j < height; j++){
             zx = 0;
             zy = 0;
             count = 0;
-            cx = -xStart + i * xStep;
-            cy = yStart - j * yStep;
-            while ((zx * zx + zy * zy < 4) && (count < MAX_INTERATIONS)) {
+            cx = xOrigin + i * xStep;
+            cy = yOrigin - j * yStep;
+            while ((zx * zx + zy * zy < 4) && (count < MAX_ITERATIONS)) {
 
                 // tempx = z_real*_real - z_imaginary*z_imaginary + c_real
                 tempx = zx * zx - zy * zy + cx;
@@ -63,19 +80,13 @@ void CalcThread::calculateFract(float xStep,float yStep, float xStart, float ySt
                 // Increment count
                 count += 1;
             }
-            float temp = (float)count/MAX_INTERATIONS;
+            float temp = (float)count/MAX_ITERATIONS;
             int index = temp * PALETTE_RANGE;
             rgb colorRGB = p.colorPixel(index);
             QRgb color = qRgb(colorRGB.r, colorRGB.g, colorRGB.b);
-            image.setPixel(i,j,color);
-        }
-        if(recalculate){
-            return;
+            data->im.setPixel(i,j,color);
         }
     }
-    m->lock();
-    data->im = image;
-    m->unlock();
     emit resultReady();
 }
 

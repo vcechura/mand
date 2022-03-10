@@ -6,15 +6,20 @@
 #include <QImage>
 #include "palette.h"
 
-#define MAX_INTERATIONS 70
-#define X_BASIC 1.5
-#define Y_BASIC 1.5
+#define MAX_ITERATIONS 70
+#define X_START 1.5
+#define Y_START 1.5
+
+#define NUM_OF_CALC_THREADS 4
 
 typedef struct COMPUTATION_DATA{
     int width;
     int height;
-    float xOrigin;
-    float yOrigin;
+    float xOffset;
+    float yOffset;
+    float xStep;
+    float yStep;
+    float zoom;
     QImage im;
     palettes p;
 }compData;
@@ -24,7 +29,7 @@ class CalcThread: public QThread
     Q_OBJECT
     void run() override;
 public:
-    CalcThread(compData * dataStruct, QMutex * mutex);
+    CalcThread(compData * dataStruct, QMutex * mutex, int threadID);
 
 public slots:
     void startRecalculation();
@@ -37,9 +42,11 @@ private:
     compData * data;
     bool recalculate;
     int width, height;
-    float xOrigin, yOrigin;
+    int threadID;
+    float xOffset, yOffset;
+    float zoom;
     palettes p;
-    void calculateFract(float xStep,float yStep, float xStart, float yStart);
+    void calculateFract(float xStep, float yStep, float xOrigin, float yOrigin);
 };
 
 #endif // WORKER_H

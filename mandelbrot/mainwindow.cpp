@@ -30,6 +30,7 @@ MainWindow::MainWindow(QWidget *parent)
 /* Delete all allocated memory */
 MainWindow::~MainWindow()
 {
+    /* Stop the threads and wait for them to correctly finish */
     for(int i = 0; i < NUM_OF_CALC_THREADS; i++){
         t[i]->requestInterruption();
         t[i]->wait();
@@ -53,7 +54,7 @@ MainWindow::~MainWindow()
     delete data;
     delete m;
 
-    /* Thread */
+    /* Threads */
     for(int i = 0; i < NUM_OF_CALC_THREADS; i++){
         delete t[i];
     }
@@ -61,7 +62,7 @@ MainWindow::~MainWindow()
 }
 
 /* Creates mutex and initializes data struct
- * used in the computation.
+ * used in the computation with starting data assigned in initVariables()
  */
 void MainWindow::initcompData(){
     data = new compData;
@@ -80,13 +81,13 @@ void MainWindow::initcompData(){
 
 /* Initializes class variables to thier starting values*/
 void MainWindow::initVariables(){
-    width = BASIC_WIDTH;
+    width = BASIC_WIDTH; // 500 x 500 pixels
     height = BASIC_HEIGHT;
-    xOffset = 0;
+    xOffset = 0; // No offset. image center is at (0,0)
     yOffset = 0;
-    zoom = 0;
+    zoom = 1; // No zoom
     numOfThreadsFinished = 0;
-    threadsReady = true;
+    threadsReady = true; // Threads are ready to calculate
 }
 
 /* QLabel init, QLabel is used to show the calculated image */
@@ -95,7 +96,7 @@ void MainWindow::initImage(){
     if(image == nullptr){
         exit(50);
     }
-    image->setAlignment(Qt::AlignCenter);
+    image->setAlignment(Qt::AlignCenter); // Put the image in the center
     image->setText("Calculating image, please wait");
 }
 
@@ -119,6 +120,7 @@ void MainWindow::initLayout(){
     layout->addWidget(buttons[2],0,2);
     layout->addWidget(buttons[3],0,6);
 
+    /* Use the created layout */
     setLayout(layout);
 }
 
@@ -171,20 +173,20 @@ void MainWindow::startWorkInAThread(){
         if(t[i] == nullptr){ // check if memory allocation was successful
             exit(50);
         }
-        connect(t[i], &CalcThread::resultReady, this, &MainWindow::handleResults); // add signal connections
-        connect(this, &MainWindow::recalculateImage, t[i], &CalcThread::startRecalculation);
-        connect(t[i], &CalcThread::finished, t[i], &QObject::deleteLater);
+        connect(t[i], &CalcThread::resultReady, this, &MainWindow::handleResults); //When calc. is ready, signal GUI thread
+        connect(this, &MainWindow::recalculateImage, t[i], &CalcThread::startRecalculation);// Signal worker threads to recalculate
+        connect(t[i], &CalcThread::finished, t[i], &QObject::deleteLater);//Deleting threads
         t[i]->start();
         while(!t[i]->isRunning()){};//wait while thread is starting
     }
 }
 
 /* Changes the wdith and height of the window with the fractal
-   based on the user input in edit fields.
+   based on the user input in edit fields. Called by "Set" button.
 */
 void MainWindow::setDimensions(){
     int temp = widthEdit->text().toInt(); // get text from line edits and convert to int
-    if(temp >= WIDTH_MIN && temp <= WIDTH_MAX){ // check if the within allowed window
+    if(temp >= WIDTH_MIN && temp <= WIDTH_MAX){ // check if it is within allowed range
         width = temp;
     }
     temp = heightEdit->text().toInt();
@@ -239,67 +241,61 @@ void MainWindow::handleResults(){
         im = data->im;
         m->unlock();
         currentPix = QPixmap::fromImage(im);
-        image->setPixmap(currentPix);
+        image->setPixmap(currentPix); //Show the image
         numOfThreadsFinished = 0;
-        threadsReady = true;
+        threadsReady = true;// Threads are now ready for next calculation
     }
 }
 
-/* If one of the following keys is pressed: 8,2,4,6, move the origin
-    of the calulation in the correct direction.
-*/
-void MainWindow::changeOrigin(int key){
-    m->lock();
-    yStep = data->yStep;
-    xStep = data->xStep;
-    m->unlock();
-    if(threadsReady){
-        if(key == Qt::Key_2){
-            yOffset += 10*yStep; // move the origin by a number of pixels
-        }else if(key == Qt::Key_8){//(*yStep) so the jumps are aways scaled
-            yOffset -= 10*yStep;
-        }else if(key == Qt::Key_6){
-            xOffset -= 10*xStep;
-        }else{
-            xOffset += 10*xStep;
-        }
-        m->lock();
-        data->xOffset = xOffset;
-        data->yOffset = yOffset;
-        m->unlock();
-        threadsReady = false;
-        emit recalculateImage();// recalculate to show the changes
-    }
-}
-
-/* If +/- is pressed, zoom in/out on the image */
-void MainWindow::changeZoom(int key){
-    if(threadsReady){
-        if(key == Qt::Key_Plus){
-            zoom -= 0.05; //zoom value
-            if(zoom < -1.5){// 1.5 is the width of the used complex field
-                zoom = -1.499;//so the zoom must be smaller
-            }
-        }else{
-            zoom += 0.05;
-        }
-        m->lock();
-        data->zoom = zoom; // update calc. data
-        m->unlock();
-        threadsReady = false;
-        emit recalculateImage(); // recalculate to show the changes
-    }
-}
-
-/* Check which key was pressed and apply the correct function */
+/* Check which key was pressed and apply the correct changes */
 void MainWindow::keyPressEvent(QKeyEvent *event){
-    if(event->key() == Qt::Key_8
-        || event->key() == Qt::Key_2
-        || event->key() == Qt::Key_4
-        || event->key() == Qt::Key_6){
-            changeOrigin(event->key()); //8,2,4,6 pressed -> change origin
-    }else if(event->key() == Qt::Key_Plus
-        || event->key() == Qt::Key_Minus){
-            changeZoom(event->key());// +,- -> change zoom
+    if(threadsReady){
+        bool recalc = true;
+        switch( event->key() )
+        {
+            case Qt::Key_8://move up
+                    m->lock();
+                    yStep = data->yStep; //offset is calculated off of step
+                    data->yOffset -= 20*yStep;//so it is consistent
+                    m->unlock();
+                    break;
+            case Qt::Key_2://move down
+                    m->lock();
+                    yStep = data->yStep;
+                    data->yOffset += 20*yStep;
+                    m->unlock();
+                    break;
+            case Qt::Key_4://move left
+                    m->lock();
+                    xStep = data->xStep;
+                    data->xOffset += 20*xStep;
+                    m->unlock();
+                    break;
+            case Qt::Key_6://move right
+                    m->lock();
+                    xStep = data->xStep;
+                    data->xOffset -= 20*xStep;
+                    m->unlock();
+                    break;
+            case Qt::Key_Plus://zoom in
+                    zoom = zoom*0.8; //zoom value
+                    m->lock();
+                    data->zoom = zoom; // update calc. data
+                    m->unlock();
+                    break;
+            case Qt::Key_Minus://zoom out
+                    zoom = zoom*1.2;
+                    m->lock();
+                    data->zoom = zoom; // update calc. data
+                    m->unlock();
+                    break;
+            default: // Don't recalculate if some garbage key was pressed
+                    recalc = false;
+                    break;
+        }
+        if(recalc){
+            threadsReady = false;
+            emit recalculateImage(); // recalculate to show the changes
+        }
     }
 }

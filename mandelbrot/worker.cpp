@@ -24,22 +24,22 @@ void CalcThread::run(){
             m->unlock();
 
             /* Calculate the step and image origin based on width, zoom and origin offset */
-            float xScaled, yScaled;
-            float xOrigin, yOrigin;
-            float xStep, yStep;
+            float xScaled, yScaled; // We have to scale the size of the protion of complex plane
+            float xOrigin, yOrigin; // Origin of the calculation
+            float xStep, yStep; // steps between pixels
             if(width > height){
                 float scale = width/height;
-                xScaled = (X_START+zoom) * scale;
-                yScaled = (Y_START+zoom);// * scale;
+                xScaled = X_START * zoom * scale; // scale the plane
+                yScaled = Y_START * zoom;
             }else{
                 float scale = height/width;
-                xScaled = (X_START+zoom);// * scale;
-                yScaled = (Y_START+zoom) * scale;
+                xScaled = X_START* zoom;
+                yScaled = Y_START * zoom * scale;
             }
             xStep = 2*xScaled/width;
             yStep = 2*yScaled/height;
-            xOrigin = -(width*xStep)*1/2 + xOffset;
-            yOrigin = (height*yStep)*1/2 + yOffset;
+            xOrigin = -(width*xStep)*1/2 + xOffset; // Left of the complex plane shown
+            yOrigin = (height*yStep)*1/2 + yOffset; // Top of the complex plane shown
 
             if(threadID == 0){ // only need to update this once
                 m->lock();
@@ -80,11 +80,11 @@ void CalcThread::calculateFract(float xStep, float yStep, float xOrigin, float y
                 // Increment count
                 count += 1;
             }
-            float temp = (float)count/MAX_ITERATIONS;
+            float temp = (float)count/MAX_ITERATIONS; // scale it to be between 0-256
             int index = temp * PALETTE_RANGE;
-            rgb colorRGB = p.colorPixel(index);
+            rgb colorRGB = p.colorPixel(index); // Read the color from palette
             QRgb color = qRgb(colorRGB.r, colorRGB.g, colorRGB.b);
-            data->im.setPixel(i,j,color);
+            data->im.setPixel(i,j,color); // Update the pixel in image
         }
     }
     emit resultReady();

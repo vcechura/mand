@@ -6,11 +6,11 @@
 #include <QImage>
 #include "palette.h"
 
-#define MAX_ITERATIONS 70
+#define MAX_ITERATIONS 50
 #define X_START 1.5
 #define Y_START 1.5
 
-#define NUM_OF_CALC_THREADS 4
+#define NUM_OF_CALC_THREADS 2
 
 typedef struct COMPUTATION_DATA{
     int width;

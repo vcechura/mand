@@ -16,8 +16,8 @@
 #define WIDTH_MAX 1800
 #define HEIGHT_MIN 200
 #define HEIGHT_MAX 900
-#define BASIC_WIDTH 800
-#define BASIC_HEIGHT 800
+#define BASIC_WIDTH 500
+#define BASIC_HEIGHT 500
 
 #define MAX_ZOOM 1.5
 
@@ -64,20 +64,18 @@ private:
     bool threadsReady;
 
     /* Init functions */
-    void initLayout();
-    void initVariables();
-    void initcompData();
-    void initImage();
-    void initEditFields();
-    void initButtons();
-    void startWorkInAThread();
+    void initLayout(); // Inits the GUI layout
+    void initVariables(); // Inits class variables to starting values
+    void initcompData(); // Inits comp. data structure
+    void initImage(); // Inits QLabel which is a widget used to show the image
+    void initEditFields(); // Edit fiels used to get user input for width and height
+    void initButtons(); // Inits push buttons
+    void startWorkInAThread(); // Starts the worker threads
 
     /* Functions for interacting with GUI */
-    void changeOrigin(int key);
-    void changeZoom(int key);
-    void changePalette();
-    void savePicture();
-    void setDimensions();
-    void keyPressEvent(QKeyEvent *event);
+    void changePalette();//Changes the current palette
+    void savePicture();//Saves a picture of the current image in .png format
+    void setDimensions();//Sets width and height according to the edit field input
+    void keyPressEvent(QKeyEvent *event);//Handles key presses
 };
 #endif // MAINWINDOW_H

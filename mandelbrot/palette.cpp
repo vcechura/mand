@@ -3,18 +3,18 @@
 #include <QTextStream>
 #include <QString>
 
-/* Load the palettes into arrays and set current pelette to Sepia */
+/* Load the palettes into arrays and set current pelette to BWRGB */
 palettes::palettes(){
     if(!loadPalette("Sepia.plt", sepia)){
+        exit(100); // Exit if loading the palette failed
+    }
+    if(!loadPalette("BlackRed.plt", blackRed)){
         exit(100);
     }
-    if(!loadPalette("Sepia.plt", blackRed)){
+    if(!loadPalette("BWRGB.plt", bwrgb)){
         exit(100);
     }
-    if(!loadPalette("Sepia.plt", bwrgb)){
-        exit(100);
-    }
-    currentPalette = SEPIA;
+    currentPalette = BWRGB;
 }
 
 /* Reads the file with a palette and loads it into array. Returns false if the palette file is corrupted. */
@@ -26,7 +26,7 @@ bool palettes::loadPalette(QString filename, rgb (&paletteArray)[PALETTE_RANGE])
     int count=0;
     QTextStream input(&palette);
 
-    while(!input.atEnd()){
+    while(!input.atEnd()){//Read all lines
         if(count > PALETTE_RANGE){//palette should have 256 lines
             palette.close();
             return false;
@@ -38,9 +38,9 @@ bool palettes::loadPalette(QString filename, rgb (&paletteArray)[PALETTE_RANGE])
         /*Check each line char by char, if there are 3 rgb values */
         for(int i = 0; i < line.size(); i++){
             QChar ch = line[i];
-            if(ch >= 48 && ch <= 57){
+            if(ch >= '0' && ch <= '9'){
                 tempNum.append(ch);
-            }else if(ch == ';'){
+            }else if(ch == ';'){//Colors are separated by ";"
                 tempArray[colorCount] = tempNum.toUInt();
                 colorCount++;
                 tempNum.clear();

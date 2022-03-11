@@ -25,6 +25,7 @@ private:
     rgb bwrgb[PALETTE_RANGE];
     rgb blackRed[PALETTE_RANGE];
     rgb sepia[PALETTE_RANGE];
+    rgb test[PALETTE_RANGE];
 };
 
 #endif // PALETTE_H
